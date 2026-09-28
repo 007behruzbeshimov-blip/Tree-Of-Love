@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tree of Love</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #ffe6eb;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    /* Boshlash yurakchasi */
+    #startBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.2s ease;
+    }
+    #startBtn:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    .heart-icon {
+      width: 44px;
+      height: 40px;
+      background-color: #ff3366;
+      display: inline-block;
+      position: relative;
+      transform: rotate(-45deg);
+      box-shadow: 0 4px 15px rgba(255, 51, 102, 0.4);
+      animation: pulse 1.2s infinite;
+    }
+    .heart-icon::before,
+    .heart-icon::after {
+      content: "";
+      width: 44px;
+      height: 40px;
+      background-color: #ff3366;
+      border-radius: 50%;
+      position: absolute;
+    }
+    .heart-icon::before {
+      top: -22px;
+      left: 0;
+    }
+    .heart-icon::after {
+      top: 0;
+      right: -22px;
+    }
+    .btn-text {
+      margin-top: 25px;
+      font-size: 13px;
+      color: #777;
+      letter-spacing: 1px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: rotate(-45deg) scale(1); }
+      50% { transform: rotate(-45deg) scale(1.15); }
+    }
+    /* Chap tarafdagi matn */
+    #text-box {
+      position: absolute;
+      left: 7%;
+      top: 15%;
+      width: 330px;
+      z-index: 5;
+      font-size: 14px;
+      line-height: 1.8;
+      color: #444;
+      white-space: pre-wrap;
+    }
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 15px;
+      background-color: #ff3366;
+      vertical-align: middle;
+      animation: blink 0.7s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    /* Pastki taymer */
+    #clock-box {
+      position: absolute;
+      left: 7%;
+      bottom: 10%;
+      z-index: 5;
+      color: #444;
+      opacity: 0;
+      transition: opacity 1.5s ease;
+    }
+    #clock-box p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    .digit {
+      font-size: 32px;
+      font-weight: bold;
+      color: #ff3366;
+    }
+    .unit {
+      font-size: 14px;
+      color: #777;
+      margin-right: 10px;
+      margin-left: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="startBtn">
+    <div class="heart-icon"></div>
+    <div class="btn-text">Click here</div>
+  </div>
+
+  <div id="text-box"><span id="typed-text"></span><span class="cursor" id="cursor"></span></div>
+
+  <div id="clock-box">
+    <p>Yulduzlar va oy birga bo'lgan vaqt:</p>
+    <div>
+      <span class="digit" id="days">00</span><span class="unit">kun</span>
+      <span class="digit" id="hours">00</span><span class="unit">soat</span>
+      <span class="digit" id="minutes">00</span><span class="unit">daqiqa</span>
+      <span class="digit" id="seconds">00</span><span class="unit">soniya</span>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const clockBox = document.getElementById('clock-box');
+    const typedTextEl = document.getElementById('typed-text');
+    const cursorEl = document.getElementById('cursor');
+
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    let animating = false;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      if (animating) {
+        buildBranches();
+        buildLeaves();
+      }
+    });
+
+    const colors = [
+      '#ff4d6d', '#ff758f', '#ff8fa3', '#c9184a',
+      '#ffb3c1', '#f72585', '#ffbe0b', '#fb5607', '#ff0054'
+    ];
+
+    function drawHeart(x, y, size, color, alpha) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(size, size);
+      ctx.rotate(Math.PI);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(0, -3, -5, -15, -15, -15);
+      ctx.bezierCurveTo(-30, -15, -30, 7.5, -30, 7.5);
+      ctx.bezierCurveTo(-30, 20, -15, 32, 0, 42);
+      ctx.bezierCurveTo(15, 32, 30, 20, 30, 7.5);
+      ctx.bezierCurveTo(30, 7.5, 30, -15, 15, -15);
+      ctx.bezierCurveTo(5, -15, 0, -3, 0, 0);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Matematik yurak shakli formulasi
+    function getHeartPoint(t, scale) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      return { x: x * scale, y: y * scale };
+    }
+
+    let branches = [];
+    let leaves = [];
+    let treeDone = false;
+    let growthProgress = 0; // Shoxlarning umumiy o'sish foizi (0 dan 1 gacha)
+
+    function buildBranches() {
+      branches = [];
+      const centerX = width * 0.68;
+      const groundY = height - 40;
+
+      // Daraxt shoxlarini aniq koordinatalar bo'yicha tuzish
+      function branch(x, y, length, angle, width, depth) {
+        if (depth <= 0) return;
+        const x2 = x + Math.cos(angle) * length;
+        const y2 = y + Math.sin(angle) * length;
+
+        branches.push({
+          x1: x, y1: y,
+          x2: x2, y2: y2,
+          width: width,
+          depth: depth
+        });
+
+        // Keyingi shoxlanishlar
+        const nextLen = length * 0.72;
+        const nextWidth = width * 0.68;
+
+        branch(x2, y2, nextLen, angle - 0.45, nextWidth, depth - 1);
+        branch(x2, y2, nextLen, angle + 0.45, nextWidth, depth - 1);
+        if (depth > 2) {
+          branch(x2, y2, nextLen * 0.8, angle + 0.05, nextWidth, depth - 1);
+        }
+      }
+
+      // Asosiy tana (boshlanishi)
+      const trunkLen = Math.min(height * 0.22, 140);
+      branch(centerX, groundY, trunkLen, -Math.PI / 2, 12, 5);
+    }
+
+    function buildLeaves() {
+      leaves = [];
+      const centerX = width * 0.68;
+      // Daraxt tana uzunligi va shoxlar joylashgan haqiqiy o'rniga mos centerY
+      const groundY = height - 40;
+      const trunkLen = Math.min(height * 0.22, 140);
+      const centerY = groundY - trunkLen * 2.1;
+      const totalLeaves = 600;
+
+      for (let i = 0; i < totalLeaves; i++) {
+        const t = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random());
+        const scale = (Math.min(width, height) * 0.011) * r;
+        const pos = getHeartPoint(t, scale);
+
+        leaves.push({
+          x: centerX + pos.x + (Math.random() - 0.5) * 15,
+          y: centerY + pos.y + (Math.random() - 0.5) * 15,
+          size: 0,
+          maxSize: 0.16 + Math.random() * 0.2,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 0,
+          delay: Math.floor(Math.random() * 120)
+        });
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Yer chizig'i
+      ctx.strokeStyle = '#222';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(width * 0.48, height - 40);
+      ctx.lineTo(width * 0.88, height - 40);
+      ctx.stroke();
+
+      // Shoxlarni o'stirish
+      if (growthProgress < 1) {
+        growthProgress += 0.015; // O'sish tezligi
+        if (growthProgress >= 1) {
+          growthProgress = 1;
+        }
+      }
+
+      // Har bir shoxni chizish
+      branches.forEach(b => {
+        // Chuqurligiga qarab bosqichma-bosqich o'sish
+        const branchStart = (5 - b.depth) * 0.18;
+        const branchEnd = branchStart + 0.25;
+
+        let localP = (growthProgress - branchStart) / (branchEnd - branchStart);
+        localP = Math.max(0, Math.min(1, localP));
+
+        if (localP > 0) {
+          ctx.beginPath();
+          ctx.strokeStyle = '#1b7a63'; // Yashil tana
+          ctx.lineCap = 'round';
+          ctx.lineWidth = b.width;
+          ctx.moveTo(b.x1, b.y1);
+          ctx.lineTo(
+            b.x1 + (b.x2 - b.x1) * localP,
+            b.y1 + (b.y2 - b.y1) * localP
+          );
+          ctx.stroke();
+        }
+      });
+
+      // Shoxlar to'liq o'sgach, yurak barglarini ochish
+      if (growthProgress >= 0.8) {
+        if (!treeDone) {
+          treeDone = true;
+          startTyping();
+          clockBox.style.opacity = '1';
+        }
+
+        leaves.forEach(leaf => {
+          if (leaf.delay > 0) {
+            leaf.delay--;
+          } else {
+            if (leaf.size < leaf.maxSize) {
+              leaf.size += 0.007;
+              leaf.alpha = Math.min(0.9, leaf.alpha + 0.04);
+            }
+          }
+          if (leaf.size > 0) {
+            drawHeart(leaf.x, leaf.y, leaf.size, leaf.color, leaf.alpha);
+          }
+        });
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Yoziladigan matn
+    const poem = `Seni sevaman
+
+Sen bu dunyodagi eng go'zal yuraksan —
+Pokiza, mehribon, nazokat timsolidir.
+Umid qilamanki, sanga munosib bo'layman,
+Faqat bilishingni istayman: sen menga azizsan.
+
+Seni sevaman — gullar ochilguncha,
+
+Yulduzlar osmondan ko'z qimirlatguncha,
+Bahor kelib, qushlar nag'ma kuylaguncha,
+Va umrimning so'nggi nafasigacha...`;
+
+    let charIndex = 0;
+    function startTyping() {
+      function type() {
+        if (charIndex < poem.length) {
+          typedTextEl.textContent += poem.charAt(charIndex);
+          charIndex++;
+          setTimeout(type, 55);
+        } else {
+          cursorEl.style.display = 'none';
+        }
+      }
+      type();
+    }
+
+    // Taymer hisobi - 17-iyul 2026 dan boshlab
+    const startDate = new Date('2026-07-17T00:00:00');
+
+    function updateClock() {
+      const now = new Date();
+      const diffMs = now - startDate;
+      const diff = Math.max(0, Math.floor(diffMs / 1000));
+
+      const days = Math.floor(diff / (24 * 3600));
+      const hours = Math.floor((diff % (24 * 3600)) / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const seconds = diff % 60;
+
+      document.getElementById('days').innerText = days;
+      document.getElementById('hours').innerText = (hours < 10 ? '0' : '') + hours;
+      document.getElementById('minutes').innerText = (minutes < 10 ? '0' : '') + minutes;
+      document.getElementById('seconds').innerText = (seconds < 10 ? '0' : '') + seconds;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Tugma bosilishi bilan ishga tushirish
+    startBtn.addEventListener('click', () => {
+      startBtn.style.display = 'none';
+      animating = true;
+      buildBranches();
+      buildLeaves();
+      animate();
+    });
+  </script>
+</body>
+</html>
